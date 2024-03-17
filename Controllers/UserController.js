@@ -20,10 +20,10 @@ var { google } = require('googleapis');
 const { whatsapp } = require('../lib/whatsapp');
 var { v4: uuidv4 } = require('uuid');
 
-const CLIENT_ID = '465301277520-vtde6k9bjbp9bifqst4fv5bupa48i2aj.apps.googleusercontent.com';
-const CLIENT_SECRET = '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';
-const REDIRECT_URI = 'https://developers.google.com/oauthplayground';
-const REFRESH_TOKEN = '1//04hZPKg6LBQ5SCgYIARAAGAQSNwF-L9Ir4jxVnoVP2RiPCsushOdaeiyiYeTM39ZJVn76r9_d7_wsg9rBgfnr0dnaXG0nJD-Ogv4';
+const CLIENT_ID = '';
+const CLIENT_SECRET = '';
+const REDIRECT_URI = '';
+const REFRESH_TOKEN = '';
 
 const registro_user = async function (req, res) {
   //Obtiene los parámetros del cliente
