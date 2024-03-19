@@ -37,6 +37,7 @@ api.post('/crear_reservacion_user', auth.auth, UserController.crear_reservacion_
 api.get('/obtener_reservaciones_user/:id', auth.auth, UserController.obtener_reservaciones_user);
 api.get('/obtener_reservaciones_public/:id', UserController.obtener_reservaciones_public);
 api.get('/obtener_reservaciones_admin', auth.auth, UserController.obtener_reservaciones_admin);
+api.get('/obtener_reservacion_admin/:id', auth.auth, UserController.obtener_reservacion_admin);
 api.put('/actualizar_reserva_reservado_admin/:id', auth.auth, UserController.actualizar_reserva_reservado_admin);
 
 //////EMPRESA

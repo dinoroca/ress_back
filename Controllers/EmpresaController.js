@@ -494,6 +494,26 @@ const obtener_reservaciones_empresa = async function (req, res) {
     res.status(500).send({ message: 'NoAccess' });
   }
 }
+const obtener_reservacion_empresa = async function (req, res) {
+  if (req.user) {
+      if (req.user.role == 'GRASS') {
+
+          let id = req.params['id'];
+
+          try {
+              let reg = await Reservacion.findById({ _id: id });
+              res.status(200).send({ data: reg });
+          } catch (error) {
+              res.status(200).send({ data: undefined });
+          }
+
+      } else {
+          res.status(500).send({ message: 'NoAccess' });
+      }
+  } else {
+      res.status(500).send({ message: 'NoAccess' });
+  }
+}
 
 const obtener_clientes_empresa = async function (req, res) {
   if (req.user) {
@@ -928,6 +948,7 @@ module.exports = {
   obtener_canchas,
   registro_reservacion_grass,
   obtener_reservaciones_empresa,
+  obtener_reservacion_empresa,
   obtener_clientes_empresa,
   eliminar_reservacion_empresa,
   kpi_ganancias_mensuales_grass,

@@ -34,6 +34,7 @@ api.get('/obtener_cancha_publico/:id', EmpresaController.obtener_cancha_publico)
 //REservaciones
 api.post('/registro_reservacion_grass', auth.auth, EmpresaController.registro_reservacion_grass);
 api.get('/obtener_reservaciones_empresa/:id', auth.auth, EmpresaController.obtener_reservaciones_empresa);
+api.get('/obtener_reservacion_empresa/:id', auth.auth, EmpresaController.obtener_reservacion_empresa);
 api.get('/obtener_clientes_empresa/:id', auth.auth, EmpresaController.obtener_clientes_empresa);
 api.delete('/eliminar_reservacion_empresa/:id', auth.auth, EmpresaController.eliminar_reservacion_empresa);
 
