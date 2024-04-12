@@ -24,6 +24,11 @@ io.on('connection', function (socket) {
     console.log(data);
   });
 
+  socket.on('confirmar-suscripcion-admin', function (data) {
+    io.emit('mostrar-suscripciones', data);
+    console.log(data);
+  });
+
   socket.on('crear-reserva-ocupado-out', function (data) {
     io.emit('mostrar-reservas-user', data);
     io.emit('mostrar-reservas', data);

@@ -40,6 +40,11 @@ api.get('/obtener_reservaciones_admin', auth.auth, UserController.obtener_reserv
 api.get('/obtener_reservacion_admin/:id', auth.auth, UserController.obtener_reservacion_admin);
 api.put('/actualizar_reserva_reservado_admin/:id', auth.auth, UserController.actualizar_reserva_reservado_admin);
 
+//SUSCRIPCIONES
+api.get('/obtener_suscripciones_admin', auth.auth, UserController.obtener_suscripciones_admin);
+api.get('/obtener_suscripcion_admin/:id', auth.auth, UserController.obtener_suscripcion_admin);
+api.put('/actualizar_suscripcion_confirmado_admin/:id', auth.auth, UserController.actualizar_suscripcion_confirmado_admin);
+
 //////EMPRESA
 api.get('/obtener_empresas_admin', auth.auth, UserController.obtener_empresas_admin);
 api.put('/actualizar_empresa_verificado_admin/:id', auth.auth, UserController.actualizar_empresa_verificado_admin);

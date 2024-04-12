@@ -5,6 +5,8 @@ var Caracteristicas = require('../Models/Caracteristicas');
 var Cancha = require('../Models/Cancha');
 var Cuenta = require('../Models/Cuenta');
 var Reservacion = require('../Models/Reservacion');
+var Suscripcion = require('../Models/Suscripcion');
+var User = require('../Models/User');
 var bcrypt = require('bcrypt-nodejs');
 var jwt = require('../Helpers/jwt');
 
@@ -66,7 +68,7 @@ const enviar_whatsapp_verificacion = async (data) => {
   } else {
     console.log('Whatsapp no existe');
   }
-};
+}
 
 const login_empresa = async function (req, res) {
   var data = req.body;
@@ -143,7 +145,7 @@ const listar_empresas_filtro = async function (req, res) {
 
 const listar_empresas_publico = async function (req, res) {
 
-  let reg = await Empresa.find().sort({ createdAt: 1 }).limit(9);
+  let reg = await Empresa.find().sort({ createdAt: 1 });
   if (reg.length > 0) {
     res.status(200).send({ data: reg });
   } else {
@@ -156,7 +158,7 @@ const listar_empresas_user = async function (req, res) {
 
     let region = req.params['region'];
 
-    let reg = await Empresa.find({ region: new RegExp(region, 'i') }).sort({ createdAt: 1 }).limit(6);
+    let reg = await Empresa.find({ region: new RegExp(region, 'i') }).sort({ createdAt: 1 });
     if (reg.length > 0) {
       res.status(200).send({ data: reg });
     } else {
@@ -472,10 +474,7 @@ const obtener_reservaciones_empresa = async function (req, res) {
     if (req.user.role == 'GRASS') {
       let id = req.params['id'];
 
-      let reservas = await Reservacion.find({
-        empresa: id,
-        estado: { $in: ['Reservado', 'Finalizado'] }
-      })
+      let reservas = await Reservacion.find({ empresa: id })
         .sort({ createdAt: -1 })
         .populate('empresa')
         .populate('cancha')
@@ -494,6 +493,7 @@ const obtener_reservaciones_empresa = async function (req, res) {
     res.status(500).send({ message: 'NoAccess' });
   }
 }
+
 const obtener_reservacion_empresa = async function (req, res) {
   if (req.user) {
       if (req.user.role == 'GRASS') {
@@ -501,7 +501,10 @@ const obtener_reservacion_empresa = async function (req, res) {
           let id = req.params['id'];
 
           try {
-              let reg = await Reservacion.findById({ _id: id });
+              let reg = await Reservacion.findById({ _id: id })
+              .populate('empresa')
+              .populate('cancha')
+              .populate({ path: 'cliente', model: 'user' });
               res.status(200).send({ data: reg });
           } catch (error) {
               res.status(200).send({ data: undefined });
@@ -512,6 +515,38 @@ const obtener_reservacion_empresa = async function (req, res) {
       }
   } else {
       res.status(500).send({ message: 'NoAccess' });
+  }
+}
+
+const actualizar_reserva_reservado_empresa = async function (req, res) {
+  if (req.user) {
+    if (req.user.role == 'GRASS') {
+
+      var id = req.params['id'];
+
+      var reg = await Reservacion.findByIdAndUpdate({ _id: id }, { estado: 'Reservado' });
+      var user = await User.findById({ _id: reg.cliente });
+
+      res.status(200).send({ data: reg });
+      enviar_whatsapp_reservado(user, reg);
+
+    } else {
+      res.status(500).send({ message: 'NoAccess' });
+    }
+  } else {
+    res.status(500).send({ message: 'NoAccess' });
+  }
+}
+
+const enviar_whatsapp_reservado = async (user, reservacion) => {
+  const tel = '+51' + user.telefono;
+  const chatId = tel.substring(1) + "@c.us";
+  const number_details = await whatsapp.getNumberId(chatId);
+  if (number_details) {
+    const mensaje = `Hola ${user.nombres}, tu reservación con código ${reservacion._id} fue confirmado. \nGracias por preferirnos y disfrute de su partido!.`;
+    await whatsapp.sendMessage(chatId, mensaje);
+  } else {
+    console.log('Whatsapp no existe');
   }
 }
 
@@ -551,6 +586,81 @@ const eliminar_reservacion_empresa = async function (req, res) {
     } else {
       res.status(500).send({ message: 'NoAccess' });
     }
+  } else {
+    res.status(500).send({ message: 'NoAccess' });
+  }
+}
+
+///SUSCRIPCIONES
+const registro_suscripcion_prueba = async function (req, res) {
+  if (req.user) {
+    if (req.user.role == 'GRASS') {
+      var data = req.body;
+
+      const fechaActual = new Date();
+      const fechaNueva = new Date();
+
+      fechaNueva.setDate(fechaActual.getDate() + 10);
+
+      data.estado = 'Confirmado';
+      data.createdAt = fechaActual;
+      data.vencimiento = fechaNueva;
+
+      let suscripcion = await Suscripcion.create(data);
+
+      res.status(200).send({ data: suscripcion });
+
+    } else {
+      res.status(500).send({ message: 'NoAccess' });
+    }
+
+  } else {
+    res.status(500).send({ message: 'NoAccess' });
+  }
+}
+
+const registro_suscripcion_empresa = async function (req, res) {
+  if (req.user) {
+    if (req.user.role == 'GRASS') {
+      var data = req.body;
+
+      const fechaActual = new Date();
+      const fechaNueva = new Date();
+
+      fechaNueva.setMonth(fechaActual.getMonth() + 1);
+
+      data.estado = 'Reservado';
+      data.createdAt = fechaActual;
+      data.vencimiento = fechaNueva;
+
+      let suscripcion = await Suscripcion.create(data);
+
+      res.status(200).send({ data: suscripcion });
+    } else {
+      res.status(500).send({ message: 'NoAccess' });
+    }
+
+  } else {
+    res.status(500).send({ message: 'NoAccess' });
+  }
+}
+
+const obtener_suscripciones_empresa = async function (req, res) {
+  if (req.user) {
+    if (req.user.role == 'GRASS') {
+      var id = req.params['id'];
+
+      var reg = await Suscripcion.find({ empresa: id }).sort({ createdAt: -1 });
+      if (reg.length >= 1) {
+        res.status(200).send({ data: reg });
+
+      } else if (reg.length == 0) {
+        res.status(200).send({ data: undefined });
+      }
+    } else {
+      res.status(500).send({ message: 'NoAccess' });
+    }
+
   } else {
     res.status(500).send({ message: 'NoAccess' });
   }
@@ -925,6 +1035,22 @@ const obtener_cuentas = async function (req, res) {
   }
 }
 
+const obtener_cuentas_de_grass = async function (req, res) {
+  if (req.user) {
+    let id = req.params['id'];
+
+      let cuentas = [];
+      try {
+        cuentas = await Cuenta.find({ empresa: id }).sort({ createdAt: -1 }).populate('empresa');
+        res.status(200).send({ data: cuentas });
+      } catch (error) {
+        res.status(200).send({ data: undefined });
+      }
+  } else {
+    res.status(500).send({ message: 'NoAccess' });
+  }
+}
+
 
 module.exports = {
   registro_empresa,
@@ -949,8 +1075,12 @@ module.exports = {
   registro_reservacion_grass,
   obtener_reservaciones_empresa,
   obtener_reservacion_empresa,
+  actualizar_reserva_reservado_empresa,
   obtener_clientes_empresa,
   eliminar_reservacion_empresa,
+  registro_suscripcion_prueba,
+  registro_suscripcion_empresa,
+  obtener_suscripciones_empresa,
   kpi_ganancias_mensuales_grass,
   obtener_cancha_empresa,
   actualizar_cancha_empresa,
@@ -966,5 +1096,6 @@ module.exports = {
   obtener_cuenta_grass,
   eliminar_cuenta_grass,
   actualizar_cuenta_grass,
-  obtener_cuentas
+  obtener_cuentas,
+  obtener_cuentas_de_grass
 }

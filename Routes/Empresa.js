@@ -35,8 +35,14 @@ api.get('/obtener_cancha_publico/:id', EmpresaController.obtener_cancha_publico)
 api.post('/registro_reservacion_grass', auth.auth, EmpresaController.registro_reservacion_grass);
 api.get('/obtener_reservaciones_empresa/:id', auth.auth, EmpresaController.obtener_reservaciones_empresa);
 api.get('/obtener_reservacion_empresa/:id', auth.auth, EmpresaController.obtener_reservacion_empresa);
+api.put('/actualizar_reserva_reservado_empresa/:id', auth.auth, EmpresaController.actualizar_reserva_reservado_empresa);
 api.get('/obtener_clientes_empresa/:id', auth.auth, EmpresaController.obtener_clientes_empresa);
 api.delete('/eliminar_reservacion_empresa/:id', auth.auth, EmpresaController.eliminar_reservacion_empresa);
+
+//SUSCRIPCIONES
+api.post('/registro_suscripcion_prueba', auth.auth, EmpresaController.registro_suscripcion_prueba);
+api.post('/registro_suscripcion_empresa', auth.auth, EmpresaController.registro_suscripcion_empresa);
+api.get('/obtener_suscripciones_empresa/:id', auth.auth, EmpresaController.obtener_suscripciones_empresa);
 
 ////KPI
 api.get('/kpi_ganancias_mensuales_grass/:id', auth.auth, EmpresaController.kpi_ganancias_mensuales_grass);
@@ -58,6 +64,7 @@ api.get('/obtener_cuenta_grass/:id', auth.auth, EmpresaController.obtener_cuenta
 api.delete('/eliminar_cuenta_grass/:id', auth.auth, EmpresaController.eliminar_cuenta_grass);
 api.put('/actualizar_cuenta_grass/:id', auth.auth, EmpresaController.actualizar_cuenta_grass);
 api.get('/obtener_cuentas', auth.auth, EmpresaController.obtener_cuentas);
+api.get('/obtener_cuentas_de_grass/:id', auth.auth, EmpresaController.obtener_cuentas_de_grass);
 
 //Buscar empresa
 api.get('/listar_empresas_filtro/:filtro?', EmpresaController.listar_empresas_filtro);

@@ -8,6 +8,7 @@ var Caracteristicas = require('../Models/Caracteristicas');
 var CuentaAdmin = require('../Models/CuentaAdmin');
 var Cuenta = require('../Models/Cuenta');
 var Contacto = require('../Models/Contacto');
+var Suscripcion = require('../Models/Suscripcion');
 var bcrypt = require('bcrypt-nodejs');
 var jwt = require('../Helpers/jwt');
 const moment = require('moment');
@@ -466,21 +467,21 @@ const crear_reservacion_user = async function (req, res) {
         cancha: data.cancha,
         fecha: data.fecha,
         $or: [
-          { 
+          {
             $and: [
-              { hora_inicio: { $lt: horaFinNuevaReserva } }, 
-              { hora_fin: { $gt: data.hora_inicio } } 
+              { hora_inicio: { $lt: horaFinNuevaReserva } },
+              { hora_fin: { $gt: data.hora_inicio } }
             ]
           },
-          { 
+          {
             $and: [
-              { hora_inicio: { $lte: data.hora_inicio } }, 
-              { hora_fin: { $gte: horaFinNuevaReserva } } 
+              { hora_inicio: { $lte: data.hora_inicio } },
+              { hora_fin: { $gte: horaFinNuevaReserva } }
             ]
           },
-          { 
+          {
             $and: [
-              { hora_inicio: { $lte: data.hora_fin } }, 
+              { hora_inicio: { $lte: data.hora_fin } },
               { hora_fin: { $gte: horaFinNuevaReserva } },
               { hora_fin: { $lte: data.hora_inicio } }
             ]
@@ -504,7 +505,7 @@ const crear_reservacion_user = async function (req, res) {
     console.error('Error al crear la reserva:', error);
     res.status(500).send({ message: 'Error al crear la reserva' });
   }
-};
+}
 
 const obtener_reservaciones_user = async function (req, res) {
   if (req.user) {
@@ -615,7 +616,7 @@ const enviar_whatsapp_reservado_admin = async (user, reservacion) => {
   } else {
     console.log('Whatsapp no existe');
   }
-};
+}
 
 
 // Función para eliminar reservas vencidas
@@ -636,14 +637,14 @@ const eliminarReservasVencidas = async () => {
     // Elimina las reservas vencidas
     for (const reserva of reservasVencidas) {
       await Reservacion.findByIdAndDelete(reserva._id);
-      
+
     }
   } catch (error) {
     console.error('Error al eliminar reservas vencidas:', error);
   }
-};
+}
 
-setInterval(eliminarReservasVencidas, 60 * 1000);
+setInterval(eliminarReservasVencidas, updateField, 60 * 1000);
 
 // Función para actualizar el estado de las reservas
 const actualizarEstadoReservas = async () => {
@@ -678,12 +679,112 @@ const actualizarEstadoReservas = async () => {
   } catch (error) {
     console.error('Error al actualizar el estado de las reservas:', error);
   }
-};
+}
 
 // Configura un temporizador para verificar y ejecutar la función cada minuto
 setInterval(actualizarEstadoReservas, 60 * 1000);
 
+//Suscripciones Empresa
+const obtener_suscripciones_admin = async function (req, res) {
+  if (req.user) {
+    if (req.user.role == 'ADMIN') {
 
+      var reg = await Suscripcion.find().sort({ createdAt: -1 }).populate('empresa');
+      if (reg.length >= 1) {
+        res.status(200).send({ data: reg });
+
+      } else if (reg.length == 0) {
+        res.status(200).send({ data: undefined });
+      }
+    } else {
+      res.status(500).send({ message: 'NoAccess' });
+    }
+
+  } else {
+    res.status(500).send({ message: 'NoAccess' });
+  }
+}
+
+const obtener_suscripcion_admin = async function (req, res) {
+  if (req.user) {
+    if (req.user.role == 'ADMIN') {
+
+      let id = req.params['id'];
+
+      try {
+        let reg = await Suscripcion.findById({ _id: id }).populate('empresa');
+        res.status(200).send({ data: reg });
+      } catch (error) {
+        res.status(200).send({ data: undefined });
+      }
+
+    } else {
+      res.status(500).send({ message: 'NoAccess' });
+    }
+  } else {
+    res.status(500).send({ message: 'NoAccess' });
+  }
+}
+
+const actualizar_suscripcion_confirmado_admin = async function (req, res) {
+  if (req.user) {
+    if (req.user.role == 'ADMIN') {
+
+      var id = req.params['id'];
+
+      var reg = await Suscripcion.findByIdAndUpdate({ _id: id }, { estado: 'Confirmado' });
+      var empresa = await Empresa.findById({ _id: reg.empresa });
+
+      res.status(200).send({ data: reg });
+      enviar_whatsapp_suscripcion(empresa, reg);
+
+    } else {
+      res.status(500).send({ message: 'NoAccess' });
+    }
+  } else {
+    res.status(500).send({ message: 'NoAccess' });
+  }
+}
+
+const enviar_whatsapp_suscripcion = async (user, reservacion) => {
+  const tel = '+51' + user.telefono;
+  const chatId = tel.substring(1) + "@c.us";
+  const number_details = await whatsapp.getNumberId(chatId);
+  if (number_details) {
+    const mensaje = `Hola ${user.nombre}, tu suscripción con código ${reservacion._id} fue confirmado. \nGracias por preferirnos y disfrute de la plataforma!.`;
+    await whatsapp.sendMessage(chatId, mensaje);
+  } else {
+    console.log('Whatsapp no existe');
+  }
+}
+
+function updateField() {
+  Suscripcion.find((err, results) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+    results.forEach((result) => {
+      const miliActual = new Date().getTime(); // Un mes en milisegundos
+      const miliVencimiento = result.vencimiento.getTime(); // Un mes en milisegundos
+
+      const fechaActual = new Date();
+      const hora_actual = fechaActual.getHours();
+      const minutos_actual = fechaActual.getMinutes();
+
+      //Función de actualizar el estado vencido de los pagos
+      if (miliActual >= miliVencimiento) {
+        result.estado = 'Vencido';
+        result.save((err) => {
+          if (err) {
+            console.error(err);
+            return;
+          }
+        });
+      }
+    });
+  });
+}
 
 //Cuentas ADMIN
 const registro_cuenta_admin = async function (req, res) {
@@ -830,12 +931,25 @@ const actualizar_empresa_verificado_admin = async function (req, res) {
       var reg = await Empresa.findByIdAndUpdate({ _id: id }, { verificado: true });
 
       res.status(200).send({ data: reg });
+      enviar_whatsapp_empresa_verificado(reg);
 
     } else {
       res.status(500).send({ message: 'NoAccess' });
     }
   } else {
     res.status(500).send({ message: 'NoAccess' });
+  }
+}
+
+const enviar_whatsapp_empresa_verificado = async (user) => {
+  const tel = '+51' + user.telefono;
+  const chatId = tel.substring(1) + "@c.us";
+  const number_details = await whatsapp.getNumberId(chatId);
+  if (number_details) {
+    const mensaje = `Hola ${user.nombre}, el registro de tu empresa fue confirmado. Puedes acceder a tu cuenta desde www.reservatugrass.com/login. \nGracias por preferirnos!.`;
+    await whatsapp.sendMessage(chatId, mensaje);
+  } else {
+    console.log('Whatsapp no existe');
   }
 }
 
@@ -883,7 +997,7 @@ const eliminar_empresa_admin = async function (req, res) {
   } else {
     res.status(500).send({ message: 'NoAccess' });
   }
-};
+}
 
 const obtener_cuentas_de_empresa_admin = async function (req, res) {
   if (req.user) {
@@ -1109,6 +1223,9 @@ module.exports = {
   obtener_reservaciones_admin,
   obtener_reservacion_admin,
   actualizar_reserva_reservado_admin,
+  obtener_suscripciones_admin,
+  obtener_suscripcion_admin,
+  actualizar_suscripcion_confirmado_admin,
   registro_cuenta_admin,
   obtener_cuentas_admin,
   obtener_cuenta_admin,
