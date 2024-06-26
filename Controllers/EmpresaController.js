@@ -780,7 +780,7 @@ const agregar_imagen_galeria_cancha = async function (req, res) {
       let data = req.body;
 
       var img_path = req.files.imagen.path;
-      var name = img_path.split('/');
+      var name = img_path.split('\\');
       var imagen_name = name[2];
 
       let reg = await Cancha.findByIdAndUpdate({ _id: id }, {
@@ -854,7 +854,7 @@ const agregar_imagen_portada = async function (req, res) {
       let data = req.body;
 
       var img_path = req.files.imagen.path;
-      var name = img_path.split('/');
+      var name = img_path.split('\\');
       console.log(name);
       var imagen_name = name[2];
 

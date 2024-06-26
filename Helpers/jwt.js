@@ -1,7 +1,7 @@
 'use strict'
 var jwt = require('jwt-simple');
 var moment = require('moment');
-var secret = 'R3S3RV45GR4S5T0K3N';
+var secret = '';
 
 exports.createToken = function(user) {
     var payload = {
