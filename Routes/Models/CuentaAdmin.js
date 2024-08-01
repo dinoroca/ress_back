@@ -3,15 +3,15 @@ var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
 //Se crea un modelo de objeto para el cliente
-var CuentaSchema = Schema({
-    empresa: {type: Schema.ObjectId, ref: 'empresa', required: true},
+var CuentaAdminSchema = Schema({
+    admin: {type: Schema.ObjectId, ref: 'admin', required: true},
     banco: {type: String, required: true},
     titular: {type: String, required: true},
-    cuenta: {type: String, required: false},
-    cci: {type: String, required: false},
+    cuenta: {type: Number, required: false},
+    cci: {type: Number, required: false},
     color: {type: String, required: true},
     
     createdAt: {type: Date, default: Date.now, required: true}
 });
 
-module.exports = mongoose.model('cuenta', CuentaSchema);
+module.exports = mongoose.model('cuenta_admin', CuentaAdminSchema);
