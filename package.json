@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "back": "file:",
     "bcrypt-nodejs": "^0.0.3",
     "body-parser": "^1.20.2",
     "connect-multiparty": "^2.2.0",
@@ -28,7 +29,7 @@
     "qrcode-terminal": "^0.12.0",
     "socket.io": "^4.7.4",
     "uuid": "^9.0.1",
-    "whatsapp-web.js": "^1.23.0"
+    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#webpack-exodus"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
