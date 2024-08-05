@@ -9,7 +9,7 @@ var Suscripcion = require('../Models/Suscripcion');
 var User = require('../Models/User');
 var bcrypt = require('bcrypt-nodejs');
 var jwt = require('../Helpers/jwt');
-
+const Jimp = require('jimp');
 var fs = require('fs');
 var path = require('path');
 
@@ -524,51 +524,49 @@ const registro_reservacion_grass = async function (req, res) {
 }
 
 const obtener_reservaciones_empresa = async function (req, res) {
-  if (req.user) {
-    if (req.user.role == 'GRASS') {
-      let id = req.params['id'];
+  if (req.user && req.user.role === 'GRASS') {
+    try {
+      const id = req.params['id'];
 
-      let reservas = await Reservacion.find({ empresa: id })
-        .sort({ createdAt: -1 })
-        .populate('empresa')
-        .populate('cancha')
-        .populate({ path: 'cliente', model: 'user' });
-      
+      const reservas = await Reservacion.find({ 
+        empresa: id,
+        estado: { $ne: 'Eliminado' } // Excluir reservaciones con estado 'Eliminado'
+      })
+      .sort({ createdAt: -1 })
+      .populate('empresa')
+      .populate('cancha')
+      .populate({ path: 'cliente', model: 'user' });
 
-      if (reservas.length >= 1) {
-        res.status(200).send({ data: reservas });
-      } else {
-        res.status(200).send({ data: undefined });
-      }
-    } else {
-      res.status(500).send({ message: 'NoAccess' });
+      res.status(200).send({ data: reservas.length ? reservas : undefined });
+    } catch (error) {
+      console.error('Error al obtener reservaciones:', error);
+      res.status(500).send({ message: 'Error al obtener reservaciones', error: error.message });
     }
   } else {
-    res.status(500).send({ message: 'NoAccess' });
+    res.status(403).send({ message: 'NoAccess' });
   }
 }
 
 const obtener_reservacion_empresa = async function (req, res) {
-  if (req.user) {
-      if (req.user.role == 'GRASS') {
+  if (req.user && req.user.role === 'GRASS') {
+    try {
+      const id = req.params['id'];
 
-          let id = req.params['id'];
+      const reg = await Reservacion.findOne({ 
+        _id: id,
+        estado: { $ne: 'Eliminado' } // Excluir reservación con estado 'Eliminado'
+      })
+      .populate('empresa')
+      .populate('cancha')
+      .populate({ path: 'cliente', model: 'user' });
 
-          try {
-              let reg = await Reservacion.findById({ _id: id })
-              .populate('empresa')
-              .populate('cancha')
-              .populate({ path: 'cliente', model: 'user' });
-              res.status(200).send({ data: reg });
-          } catch (error) {
-              res.status(200).send({ data: undefined });
-          }
-
-      } else {
-          res.status(500).send({ message: 'NoAccess' });
-      }
+      res.status(200).send({ data: reg || undefined });
+    } catch (error) {
+      console.error('Error al obtener la reservación:', error);
+      res.status(500).send({ message: 'Error al obtener la reservación', error: error.message });
+    }
   } else {
-      res.status(500).send({ message: 'NoAccess' });
+    res.status(403).send({ message: 'NoAccess' });
   }
 }
 
@@ -654,7 +652,7 @@ const registro_suscripcion_prueba = async function (req, res) {
       const fechaActual = new Date();
       const fechaNueva = new Date();
 
-      fechaNueva.setDate(fechaActual.getDate() + 10);
+      fechaNueva.setDate(fechaActual.getMonth() + 1);
 
       data.estado = 'Confirmado';
       data.createdAt = fechaActual;
@@ -826,29 +824,42 @@ const kpi_ganancias_mensuales_grass = async function (req, res) {
 
 //Galería CANCHA
 const agregar_imagen_galeria_cancha = async function (req, res) {
-
   if (req.user) {
     if (req.user.role == 'GRASS') {
-
       let id = req.params['id'];
       let data = req.body;
 
-      var img_path = req.files.imagen.path;
-      var name = img_path.split('/');
-      var imagen_name = name[2];
+      if (req.files && req.files.imagen) {
+        var img_path = req.files.imagen.path;
+        var name = img_path.split(path.sep);
+        var imagen_name = name[name.length - 1]; // Utiliza el último segmento del path
 
-      let reg = await Cancha.findByIdAndUpdate({ _id: id }, {
-        $push: {
-          galeria: {
-            imagen: imagen_name,
-            _id: data._id
-          }
+        try {
+          // Reducir el tamaño de la imagen
+          const image = await Jimp.read(img_path);
+          await image.resize(800, Jimp.AUTO).writeAsync(img_path);
+
+          // Guardar la imagen en la base de datos
+          let reg = await Cancha.findByIdAndUpdate(
+            { _id: id },
+            {
+              $push: {
+                galeria: {
+                  imagen: imagen_name,
+                  _id: data._id
+                }
+              }
+            }
+          );
+
+          res.status(200).send({ data: reg });
+        } catch (err) {
+          console.error('Error procesando la imagen:', err);
+          res.status(500).send({ message: 'Error procesando la imagen' });
         }
-      });
-
-      res.status(200).send({ data: reg });
-
-
+      } else {
+        res.status(400).send({ message: 'No se ha subido ninguna imagen.' });
+      }
     } else {
       res.status(500).send({ message: 'NoAccess' });
     }
@@ -900,30 +911,42 @@ const obtener_galeria_cancha = async function (req, res) {
 
 //PORTADA DE GRASS
 const agregar_imagen_portada = async function (req, res) {
-
   if (req.user) {
     if (req.user.role == 'GRASS') {
-
       let id = req.params['id'];
       let data = req.body;
 
-      var img_path = req.files.imagen.path;
-      var name = img_path.split('/');
-      console.log(name);
-      var imagen_name = name[2];
+      if (req.files && req.files.imagen) {
+        var img_path = req.files.imagen.path;
+        var name = img_path.split(path.sep);
+        var imagen_name = name[name.length - 1]; // Utiliza el último segmento del path
 
-      let reg = await Empresa.findByIdAndUpdate({ _id: id }, {
-        $push: {
-          portada: {
-            imagen: imagen_name,
-            _id: data._id
-          }
+        try {
+          // Reducir el tamaño de la imagen
+          const image = await Jimp.read(img_path);
+          await image.resize(800, Jimp.AUTO).writeAsync(img_path);
+
+          // Guardar la imagen en la base de datos
+          let reg = await Empresa.findByIdAndUpdate(
+            { _id: id },
+            {
+              $push: {
+                portada: {
+                  imagen: imagen_name,
+                  _id: data._id
+                }
+              }
+            }
+          );
+
+          res.status(200).send({ data: reg });
+        } catch (err) {
+          console.error('Error procesando la imagen:', err);
+          res.status(500).send({ message: 'Error procesando la imagen' });
         }
-      });
-
-      res.status(200).send({ data: reg });
-
-
+      } else {
+        res.status(400).send({ message: 'No se ha subido ninguna imagen.' });
+      }
     } else {
       res.status(500).send({ message: 'NoAccess' });
     }

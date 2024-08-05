@@ -6,7 +6,7 @@ var Schema = mongoose.Schema;
 var SuscripcionSchema = Schema({
     empresa: {type: Schema.ObjectId, ref: 'empresa', required: true},
     subtotal: {type: Number, required: true},
-    transaccion: {type: String, required: true},
+    transaccion: {type: String, required: false},
     estado: {type: String, required: true},
     createdAt: {type: Date, required: true},
     vencimiento: {type: Date, required: true}

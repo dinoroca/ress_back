@@ -21,10 +21,10 @@ var { google } = require('googleapis');
 const { whatsapp } = require('../lib/whatsapp');
 var { v4: uuidv4 } = require('uuid');
 
-const CLIENT_ID = '';
-const CLIENT_SECRET = '';
-const REDIRECT_URI = '';
-const REFRESH_TOKEN = '';
+const CLIENT_ID = '465301277520-vtde6k9bjbp9bifqst4fv5bupa48i2aj.apps.googleusercontent.com';
+const CLIENT_SECRET = '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';
+const REDIRECT_URI = 'https://developers.google.com/oauthplayground';
+const REFRESH_TOKEN = '1//04yujh6P2bDMvCgYIARAAGAQSNwF-L9IrmwvIpHofKuEISoX7lnAwIsJI4Qfu0mgHwTmiO7Ahalz7X45ntfVYnTj5OfTUi9P354A';
 
 const registro_user = async function (req, res) {
   //Obtiene los parámetros del cliente
@@ -453,7 +453,6 @@ const cambiar_password_user = async function (req, res) {
 }
 
 
-// Reservaciones
 const crear_reservacion_user = async function (req, res) {
   try {
     if (req.user && req.user.role === 'USER') {
@@ -466,6 +465,7 @@ const crear_reservacion_user = async function (req, res) {
       const reservasExistente = await Reservacion.find({
         cancha: data.cancha,
         fecha: data.fecha,
+        estado: { $ne: 'Eliminado' }, // Excluir reservas con estado 'Eliminado'
         $or: [
           {
             $and: [
@@ -481,9 +481,8 @@ const crear_reservacion_user = async function (req, res) {
           },
           {
             $and: [
-              { hora_inicio: { $lte: data.hora_fin } },
-              { hora_fin: { $gte: horaFinNuevaReserva } },
-              { hora_fin: { $lte: data.hora_inicio } }
+              { hora_inicio: { $gte: data.hora_inicio } },
+              { hora_inicio: { $lt: horaFinNuevaReserva } }
             ]
           }
         ]
@@ -491,19 +490,19 @@ const crear_reservacion_user = async function (req, res) {
 
       // Si hay reservas existentes, enviar un mensaje de conflicto
       if (reservasExistente.length > 0) {
-        res.status(200).send({ data: undefined, message: 'La cancha ya está reservada para ese horario' });
-      } else {
-        // Si no hay conflictos, crear la reserva
-        const reg = await Reservacion.create(data);
-        res.status(200).send({ data: reg });
-      }
+        return res.status(409).send({ data: undefined, message: 'La cancha ya está reservada para ese horario' });
+      } 
+
+      // Si no hay conflictos, crear la reserva
+      const reg = await Reservacion.create(data);
+      res.status(201).send({ data: reg });
 
     } else {
-      res.status(500).send({ message: 'NoAccess' });
+      res.status(403).send({ message: 'NoAccess' });
     }
   } catch (error) {
     console.error('Error al crear la reserva:', error);
-    res.status(500).send({ message: 'Error al crear la reserva' });
+    res.status(500).send({ message: 'Error al crear la reserva', error: error.message });
   }
 }
 
@@ -512,30 +511,44 @@ const obtener_reservaciones_user = async function (req, res) {
     if (req.user.role == 'USER') {
       let id = req.params['id'];
 
-      let reservas = [];
       try {
-        reservas = await Reservacion.find({ cliente: id }).sort({ createdAt: -1 }).populate('empresa').populate('cancha');
+        let reservas = await Reservacion.find({ 
+          cliente: id,
+          estado: { $ne: 'Eliminado' } // Excluye las reservaciones con estado 'Eliminado'
+        })
+        .sort({ createdAt: -1 })
+        .populate('empresa')
+        .populate('cancha');
+
         res.status(200).send({ data: reservas });
       } catch (error) {
-        res.status(200).send({ data: undefined });
+        console.error('Error al obtener reservaciones de usuario:', error);
+        res.status(500).send({ data: undefined, message: 'Error al obtener reservaciones' });
       }
     } else {
-      res.status(500).send({ message: 'NoAccess' });
+      res.status(403).send({ message: 'NoAccess' });
     }
   } else {
-    res.status(500).send({ message: 'NoAccess' });
+    res.status(401).send({ message: 'NoAccess' });
   }
 }
 
 const obtener_reservaciones_public = async function (req, res) {
   let id = req.params['id'];
 
-  let reservas = [];
   try {
-    reservas = await Reservacion.find({ cancha: id }).sort({ createdAt: -1 }).populate('empresa').populate('cancha');
+    let reservas = await Reservacion.find({ 
+      cancha: id,
+      estado: { $ne: 'Eliminado' } // Excluye las reservaciones con estado 'Eliminado'
+    })
+    .sort({ createdAt: -1 })
+    .populate('empresa')
+    .populate('cancha');
+
     res.status(200).send({ data: reservas });
   } catch (error) {
-    res.status(200).send({ data: undefined });
+    console.error('Error al obtener reservaciones públicas:', error);
+    res.status(500).send({ data: undefined, message: 'Error al obtener reservaciones' });
   }
 }
 
@@ -619,32 +632,32 @@ const enviar_whatsapp_reservado_admin = async (user, reservacion) => {
 }
 
 
-// Función para eliminar reservas vencidas
-const eliminarReservasVencidas = async () => {
+// Función para actualizar reservas vencidas
+const actualizarReservasVencidas = async () => {
   try {
     // Define el límite de tiempo para las reservas (en minutos)
     const limiteTiempo = 15;
 
-    // Calcula la fecha límite para eliminar las reservas
+    // Calcula la fecha límite para actualizar las reservas
     const fechaLimite = moment().subtract(limiteTiempo, 'minutes');
 
-    // Busca las reservas con estado 'Ocupado' y fecha de creación anterior a la fecha límite
-    const reservasVencidas = await Reservacion.find({
-      estado: 'Ocupado',
-      createdAt: { $lte: fechaLimite.toDate() }
-    });
-
-    // Elimina las reservas vencidas
-    for (const reserva of reservasVencidas) {
-      await Reservacion.findByIdAndDelete(reserva._id);
-
-    }
+    // Busca y actualiza las reservas con estado 'Ocupado' y fecha de creación anterior a la fecha límite
+    const resultado = await Reservacion.updateMany(
+      {
+        estado: 'Ocupado',
+        createdAt: { $lte: fechaLimite.toDate() }
+      },
+      {
+        $set: { estado: 'Eliminado' }
+      }
+    );
   } catch (error) {
-    console.error('Error al eliminar reservas vencidas:', error);
+    console.error('Error al actualizar reservas vencidas:', error);
   }
 }
 
-setInterval(eliminarReservasVencidas, updateField, 60 * 1000);
+// Ejecuta la función cada minuto
+setInterval(actualizarReservasVencidas, 60 * 1000);
 
 // Función para actualizar el estado de las reservas
 const actualizarEstadoReservas = async () => {
