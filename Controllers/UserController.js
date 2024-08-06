@@ -21,10 +21,13 @@ var { google } = require('googleapis');
 const { whatsapp } = require('../lib/whatsapp');
 var { v4: uuidv4 } = require('uuid');
 
+const { format, parseISO } = require('date-fns');
+const { es } = require('date-fns/locale');
+
 const CLIENT_ID = '465301277520-vtde6k9bjbp9bifqst4fv5bupa48i2aj.apps.googleusercontent.com';
 const CLIENT_SECRET = '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';
 const REDIRECT_URI = 'https://developers.google.com/oauthplayground';
-const REFRESH_TOKEN = '1//04yujh6P2bDMvCgYIARAAGAQSNwF-L9IrmwvIpHofKuEISoX7lnAwIsJI4Qfu0mgHwTmiO7Ahalz7X45ntfVYnTj5OfTUi9P354A';
+const REFRESH_TOKEN = '1//04YSiETfZkHa6CgYIARAAGAQSNwF-L9IriWBIFTLnZGiPPIO81SqWk-0y82eIejMAqGkPPMCZg6bNGI0k6GfKSCmBlXmDViSAn6o"';
 
 const registro_user = async function (req, res) {
   //Obtiene los parámetros del cliente
@@ -487,6 +490,7 @@ const crear_reservacion_user = async function (req, res) {
           }
         ]
       });
+      
 
       // Si hay reservas existentes, enviar un mensaje de conflicto
       if (reservasExistente.length > 0) {
@@ -495,6 +499,8 @@ const crear_reservacion_user = async function (req, res) {
 
       // Si no hay conflictos, crear la reserva
       const reg = await Reservacion.create(data);
+      var empresa = await Empresa.findById({ _id: data.empresa });
+      enviar_whatsapp_reservacion_a_empresa(empresa, reg);
       res.status(201).send({ data: reg });
 
     } else {
@@ -503,6 +509,20 @@ const crear_reservacion_user = async function (req, res) {
   } catch (error) {
     console.error('Error al crear la reserva:', error);
     res.status(500).send({ message: 'Error al crear la reserva', error: error.message });
+  }
+}
+
+const enviar_whatsapp_reservacion_a_empresa = async (empresa, reservacion) => {
+  const tel = '+51' + empresa.telefono;
+  const chatId = tel.substring(1) + "@c.us";
+  const number_details = await whatsapp.getNumberId(chatId);
+  if (number_details) {
+    const fechaFormateada = format(reservacion.fecha, "d 'de' MMMM 'de' yyyy", { locale: es });
+    const mensaje = `Hola Grass ${empresa.nombre}, se registró una reservación con código: *${reservacion._id}* para la fecha *${fechaFormateada}* para las *${reservacion.hora_inicio}* - *${reservacion.hora_fin}*. 
+    \nMantente atento al pago y confirme la reservación!`;
+    await whatsapp.sendMessage(chatId, mensaje);
+  } else {
+    console.log('Whatsapp no existe');
   }
 }
 
