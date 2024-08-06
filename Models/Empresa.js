@@ -11,6 +11,7 @@ var EmpresaSchema = Schema({
     email: {type: String, required: true},
     direccion: {type: String, required: true},
     telefono: {type: String, required: true},
+    telefono_fijo: {type: String, required: false},
     region: {type: String, required: false},
     provincia: {type: String, required: false},
     distrito: {type: String, required: false},
